@@ -1,8 +1,8 @@
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
 
 public class ClientGUI extends JFrame {
 
@@ -13,13 +13,15 @@ public class ClientGUI extends JFrame {
     private static final Color ACCENT2     = new Color(139, 92, 246);
     private static final Color TEXT_MAIN   = new Color(226, 232, 240);
     private static final Color TEXT_DIM    = new Color(100, 116, 139);
-    private static final Color MY_MSG      = new Color(49, 46, 129);
-    private static final Color OTHER_MSG   = new Color(30, 41, 59);
+    private static final Color MY_MSG_BG   = new Color(99, 102, 241);
+    private static final Color OTHER_MSG_BG= new Color(36, 36, 60);
     private static final Color JOIN_COLOR  = new Color(52, 211, 153);
     private static final Color LEAVE_COLOR = new Color(248, 113, 113);
     private static final Color SERVER_COL  = new Color(251, 191, 36);
+    private static final Color PM_BG       = new Color(120, 53, 15);
 
-    private final JTextPane chatPane    = new JTextPane();
+    private final JPanel chatPanel = new JPanel();
+    private JScrollPane chatScroll;
     private final JTextField inputField = new JTextField();
     private final DefaultListModel<String> onlineModel = new DefaultListModel<>();
     private final JList<String> onlineList = new JList<>(onlineModel);
@@ -29,9 +31,7 @@ public class ClientGUI extends JFrame {
     private Client client;
     private String username;
 
-    public ClientGUI() {
-        showLoginDialog();
-    }
+    public ClientGUI() { showLoginDialog(); }
 
     private void showLoginDialog() {
         JDialog dialog = new JDialog((Frame) null, "Join Chat", true);
@@ -61,13 +61,7 @@ public class ClientGUI extends JFrame {
         JTextField portField = addFormRow(form, "Port:", c, 3);
         portField.setText("5000");
 
-        JButton joinBtn = new JButton("Connect →");
-        joinBtn.setBackground(ACCENT);
-        joinBtn.setForeground(Color.WHITE);
-        joinBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        joinBtn.setBorder(BorderFactory.createEmptyBorder(8, 18, 8, 18));
-        joinBtn.setFocusPainted(false);
-        joinBtn.setOpaque(true);
+        JButton joinBtn = styledButton("Connect →", ACCENT, Color.WHITE, 14);
         c.gridy = 4; c.gridx = 0; c.gridwidth = 2;
         c.insets = new Insets(14, 4, 4, 4);
         form.add(joinBtn, c);
@@ -80,25 +74,19 @@ public class ClientGUI extends JFrame {
             try { port = Integer.parseInt(portField.getText().trim()); }
             catch (NumberFormatException ex) { return; }
             if (name.isEmpty() || host.isEmpty()) return;
-
             username = name;
             client = new Client(name, host, port);
             setupClientListener();
-            if (client.connect()) {
-                dialog.dispose();
-                buildMainUI();
-            } else {
-                JOptionPane.showMessageDialog(dialog,
-                        "Could not connect to " + host + ":" + port,
-                        "Connection Failed", JOptionPane.ERROR_MESSAGE);
-            }
+            if (client.connect()) { dialog.dispose(); buildMainUI(); }
+            else JOptionPane.showMessageDialog(dialog,
+                    "Could not connect to " + host + ":" + port,
+                    "Connection Failed", JOptionPane.ERROR_MESSAGE);
         });
 
         ActionListener submit = e -> joinBtn.doClick();
         nameField.addActionListener(submit);
         hostField.addActionListener(submit);
         portField.addActionListener(submit);
-
         dialog.setVisible(true);
     }
 
@@ -108,10 +96,8 @@ public class ClientGUI extends JFrame {
         lbl.setForeground(TEXT_DIM);
         lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         panel.add(lbl, c);
-
         JTextField field = new JTextField();
-        field.setBackground(CARD_BG);
-        field.setForeground(TEXT_MAIN);
+        field.setBackground(CARD_BG); field.setForeground(TEXT_MAIN);
         field.setCaretColor(Color.WHITE);
         field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         field.setBorder(BorderFactory.createCompoundBorder(
@@ -125,14 +111,13 @@ public class ClientGUI extends JFrame {
     private void buildMainUI() {
         setTitle("ChatApp — " + username);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(860, 600);
+        setSize(900, 640);
         setLocationRelativeTo(null);
         getContentPane().setBackground(BG);
         setLayout(new BorderLayout());
         addWindowListener(new WindowAdapter() {
             @Override public void windowClosing(WindowEvent e) { client.disconnect(); }
         });
-
         add(buildHeader(), BorderLayout.NORTH);
         add(buildCenterPanel(), BorderLayout.CENTER);
         add(buildInputPanel(), BorderLayout.SOUTH);
@@ -146,50 +131,36 @@ public class ClientGUI extends JFrame {
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 2, 0, ACCENT),
                 BorderFactory.createEmptyBorder(10, 16, 10, 16)));
-
         JLabel title = new JLabel("⚡ ChatApp");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
         title.setForeground(TEXT_MAIN);
-
         JLabel userLabel = new JLabel("Logged in as: " + username);
         userLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         userLabel.setForeground(TEXT_DIM);
-
         statusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         statusLabel.setForeground(JOIN_COLOR);
-
-        JButton dcBtn = new JButton("Disconnect");
-        dcBtn.setBackground(new Color(127, 29, 29));
-        dcBtn.setForeground(new Color(254, 202, 202));
-        dcBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        dcBtn.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
-        dcBtn.setFocusPainted(false);
-        dcBtn.setOpaque(true);
+        JButton dcBtn = styledButton("Disconnect", new Color(127, 29, 29), new Color(254, 202, 202), 11);
         dcBtn.addActionListener(e -> { client.disconnect(); System.exit(0); });
-
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
-        left.setOpaque(false);
-        left.add(title);
-
+        left.setOpaque(false); left.add(title);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         right.setOpaque(false);
-        right.add(userLabel);
-        right.add(statusLabel);
-        right.add(dcBtn);
-
+        right.add(userLabel); right.add(statusLabel); right.add(dcBtn);
         header.add(left, BorderLayout.WEST);
         header.add(right, BorderLayout.EAST);
         return header;
     }
 
     private JSplitPane buildCenterPanel() {
-        chatPane.setEditable(false);
-        chatPane.setBackground(BG);
-        chatPane.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
+        chatPanel.setBackground(BG);
+        chatPanel.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
 
-        JScrollPane chatScroll = new JScrollPane(chatPane);
+        chatScroll = new JScrollPane(chatPanel);
         chatScroll.setBorder(BorderFactory.createEmptyBorder());
         chatScroll.getViewport().setBackground(BG);
+        chatScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        chatScroll.getVerticalScrollBar().setUnitIncrement(16);
 
         JPanel rightPanel = new JPanel(new BorderLayout(0, 8));
         rightPanel.setBackground(PANEL_BG);
@@ -202,8 +173,7 @@ public class ClientGUI extends JFrame {
         onlineLabel.setForeground(TEXT_DIM);
         onlineLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        onlineList.setBackground(PANEL_BG);
-        onlineList.setForeground(TEXT_MAIN);
+        onlineList.setBackground(PANEL_BG); onlineList.setForeground(TEXT_MAIN);
         onlineList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         onlineList.setFixedCellHeight(30);
 
@@ -213,35 +183,22 @@ public class ClientGUI extends JFrame {
 
         JPanel pmPanel = new JPanel(new GridLayout(3, 1, 0, 4));
         pmPanel.setOpaque(false);
-
         JLabel pmLabel = new JLabel("Private Message");
         pmLabel.setForeground(TEXT_DIM);
         pmLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-        pmCombo.setBackground(CARD_BG);
-        pmCombo.setForeground(TEXT_MAIN);
+        pmCombo.setBackground(CARD_BG); pmCombo.setForeground(TEXT_MAIN);
         pmCombo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         pmCombo.addItem("— Select User —");
-
-        JButton pmBtn = new JButton("Send Private");
-        pmBtn.setBackground(ACCENT2);
-        pmBtn.setForeground(Color.WHITE);
-        pmBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        pmBtn.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-        pmBtn.setFocusPainted(false);
-        pmBtn.setOpaque(true);
+        JButton pmBtn = styledButton("Send Private", ACCENT2, Color.WHITE, 11);
         pmBtn.addActionListener(e -> sendPrivate());
-
-        pmPanel.add(pmLabel);
-        pmPanel.add(pmCombo);
-        pmPanel.add(pmBtn);
+        pmPanel.add(pmLabel); pmPanel.add(pmCombo); pmPanel.add(pmBtn);
 
         rightPanel.add(onlineLabel, BorderLayout.NORTH);
         rightPanel.add(onlineScroll, BorderLayout.CENTER);
         rightPanel.add(pmPanel, BorderLayout.SOUTH);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, chatScroll, rightPanel);
-        split.setDividerLocation(640);
+        split.setDividerLocation(680);
         split.setDividerSize(2);
         split.setBorder(null);
         return split;
@@ -253,25 +210,15 @@ public class ClientGUI extends JFrame {
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(2, 0, 0, 0, ACCENT),
                 BorderFactory.createEmptyBorder(10, 16, 10, 16)));
-
-        inputField.setBackground(CARD_BG);
-        inputField.setForeground(TEXT_MAIN);
+        inputField.setBackground(CARD_BG); inputField.setForeground(TEXT_MAIN);
         inputField.setCaretColor(Color.WHITE);
         inputField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         inputField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ACCENT, 1),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         inputField.addActionListener(e -> sendMessage());
-
-        JButton sendBtn = new JButton("Send ➤");
-        sendBtn.setBackground(ACCENT);
-        sendBtn.setForeground(Color.WHITE);
-        sendBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        sendBtn.setBorder(BorderFactory.createEmptyBorder(8, 18, 8, 18));
-        sendBtn.setFocusPainted(false);
-        sendBtn.setOpaque(true);
+        JButton sendBtn = styledButton("Send ➤", ACCENT, Color.WHITE, 13);
         sendBtn.addActionListener(e -> sendMessage());
-
         panel.add(inputField, BorderLayout.CENTER);
         panel.add(sendBtn, BorderLayout.EAST);
         return panel;
@@ -286,7 +233,7 @@ public class ClientGUI extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setText("✕ Disconnected");
                     statusLabel.setForeground(LEAVE_COLOR);
-                    appendSystem(reason, LEAVE_COLOR);
+                    addSystemMessage(reason, LEAVE_COLOR);
                 });
             }
             @Override public void onMessage(Message msg) {
@@ -310,78 +257,89 @@ public class ClientGUI extends JFrame {
         switch (msg.getType()) {
             case TEXT:
                 boolean mine = msg.getSender().equals(username);
-                appendBubble(msg.getSender(), msg.getContent(), msg.getTimestamp(),
-                        mine ? MY_MSG : OTHER_MSG, mine);
+                addBubble(mine ? "You" : msg.getSender(),
+                        msg.getContent(), msg.getTimestamp(),
+                        mine ? MY_MSG_BG : OTHER_MSG_BG, mine);
                 break;
             case PRIVATE:
-                appendPrivate(msg);
+                boolean isMine = msg.getSender().equals(username);
+                String lbl = isMine ? "🔒 You → " + msg.getReceiver() : "🔒 " + msg.getSender() + " → You";
+                addBubble(lbl, msg.getContent(), msg.getTimestamp(), PM_BG, isMine);
                 break;
-            case JOIN:
-                appendSystem("⟶ " + msg.getContent(), JOIN_COLOR);
-                break;
-            case LEAVE:
-                appendSystem("⟵ " + msg.getContent(), LEAVE_COLOR);
-                break;
-            case SERVER:
-                appendSystem("ℹ " + msg.getContent(), SERVER_COL);
-                break;
+            case JOIN:   addSystemMessage("⟶ " + msg.getContent(), JOIN_COLOR);  break;
+            case LEAVE:  addSystemMessage("⟵ " + msg.getContent(), LEAVE_COLOR); break;
+            case SERVER: addSystemMessage("ℹ " + msg.getContent(), SERVER_COL);  break;
         }
     }
 
-    private void appendBubble(String sender, String text, String time, Color bg, boolean isMe) {
-        StyledDocument doc = chatPane.getStyledDocument();
-        try {
-            SimpleAttributeSet nameStyle = new SimpleAttributeSet();
-            StyleConstants.setForeground(nameStyle, isMe ? new Color(165, 180, 252) : new Color(125, 211, 252));
-            StyleConstants.setBold(nameStyle, true);
-            StyleConstants.setFontSize(nameStyle, 12);
-            doc.insertString(doc.getLength(), (isMe ? "You" : sender) + "  ", nameStyle);
+    /** Adds a rounded chat bubble aligned LEFT (received) or RIGHT (sent). */
+    private void addBubble(String sender, String text, String time, Color bubbleColor, boolean isMe) {
+        // Full-width row
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
 
-            SimpleAttributeSet timeStyle = new SimpleAttributeSet();
-            StyleConstants.setForeground(timeStyle, TEXT_DIM);
-            StyleConstants.setFontSize(timeStyle, 11);
-            doc.insertString(doc.getLength(), time + "\n", timeStyle);
+        // Rounded bubble
+        JPanel bubble = new RoundedPanel(18, bubbleColor);
+        bubble.setLayout(new BorderLayout(0, 4));
+        bubble.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
 
-            SimpleAttributeSet msgStyle = new SimpleAttributeSet();
-            StyleConstants.setForeground(msgStyle, TEXT_MAIN);
-            StyleConstants.setFontSize(msgStyle, 14);
-            StyleConstants.setBackground(msgStyle, bg);
-            doc.insertString(doc.getLength(), "  " + text + "  \n\n", msgStyle);
-            chatPane.setCaretPosition(doc.getLength());
-        } catch (BadLocationException ignored) {}
+        JLabel nameLabel = new JLabel(sender);
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        nameLabel.setForeground(isMe ? new Color(199, 210, 254) : new Color(125, 211, 252));
+
+        JTextArea msgText = new JTextArea(text);
+        msgText.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        msgText.setForeground(Color.WHITE);
+        msgText.setOpaque(false);
+        msgText.setEditable(false);
+        msgText.setLineWrap(true);
+        msgText.setWrapStyleWord(true);
+        msgText.setFocusable(false);
+        msgText.setBorder(null);
+
+        JLabel timeLabel = new JLabel(time);
+        timeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        timeLabel.setForeground(new Color(180, 180, 210));
+        timeLabel.setHorizontalAlignment(isMe ? SwingConstants.RIGHT : SwingConstants.LEFT);
+
+        bubble.add(nameLabel, BorderLayout.NORTH);
+        bubble.add(msgText,   BorderLayout.CENTER);
+        bubble.add(timeLabel, BorderLayout.SOUTH);
+
+        // Constrain bubble width
+        int bubbleWidth = Math.min(440, Math.max(120, text.length() * 9 + 80));
+        bubble.setPreferredSize(new Dimension(bubbleWidth, bubble.getPreferredSize().height + 46));
+
+        // Align: sent → RIGHT, received → LEFT
+        JPanel aligner = new JPanel(new FlowLayout(isMe ? FlowLayout.RIGHT : FlowLayout.LEFT, 4, 0));
+        aligner.setOpaque(false);
+        aligner.add(bubble);
+
+        row.add(aligner, BorderLayout.CENTER);
+        chatPanel.add(row);
+        chatPanel.revalidate();
+        scrollToBottom();
     }
 
-    private void appendPrivate(Message msg) {
-        StyledDocument doc = chatPane.getStyledDocument();
-        try {
-            boolean isMe = msg.getSender().equals(username);
-            String header = isMe ? "🔒 You → " + msg.getReceiver() : "🔒 " + msg.getSender() + " → You";
-
-            SimpleAttributeSet headerStyle = new SimpleAttributeSet();
-            StyleConstants.setForeground(headerStyle, new Color(251, 191, 36));
-            StyleConstants.setBold(headerStyle, true);
-            StyleConstants.setFontSize(headerStyle, 12);
-            doc.insertString(doc.getLength(), header + "  " + msg.getTimestamp() + "\n", headerStyle);
-
-            SimpleAttributeSet msgStyle = new SimpleAttributeSet();
-            StyleConstants.setForeground(msgStyle, TEXT_MAIN);
-            StyleConstants.setBackground(msgStyle, new Color(120, 53, 15));
-            StyleConstants.setFontSize(msgStyle, 14);
-            doc.insertString(doc.getLength(), "  " + msg.getContent() + "  \n\n", msgStyle);
-            chatPane.setCaretPosition(doc.getLength());
-        } catch (BadLocationException ignored) {}
+    private void addSystemMessage(String text, Color color) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        row.setOpaque(false);
+        row.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lbl.setForeground(color);
+        row.add(lbl);
+        chatPanel.add(row);
+        chatPanel.revalidate();
+        scrollToBottom();
     }
 
-    private void appendSystem(String text, Color color) {
-        StyledDocument doc = chatPane.getStyledDocument();
-        try {
-            SimpleAttributeSet style = new SimpleAttributeSet();
-            StyleConstants.setForeground(style, color);
-            StyleConstants.setItalic(style, true);
-            StyleConstants.setFontSize(style, 12);
-            doc.insertString(doc.getLength(), text + "\n\n", style);
-            chatPane.setCaretPosition(doc.getLength());
-        } catch (BadLocationException ignored) {}
+    private void scrollToBottom() {
+        SwingUtilities.invokeLater(() -> {
+            JScrollBar bar = chatScroll.getVerticalScrollBar();
+            bar.setValue(bar.getMaximum());
+        });
     }
 
     private void sendMessage() {
@@ -395,9 +353,39 @@ public class ClientGUI extends JFrame {
         String target = (String) pmCombo.getSelectedItem();
         if (target == null || target.startsWith("—")) return;
         String text = JOptionPane.showInputDialog(this,
-                "Private message to " + target + ":", "Private Message", JOptionPane.PLAIN_MESSAGE);
-        if (text != null && !text.trim().isEmpty()) {
+                "Private message to " + target + ":",
+                "Private Message", JOptionPane.PLAIN_MESSAGE);
+        if (text != null && !text.trim().isEmpty())
             client.sendPrivate(target, text.trim());
+    }
+
+    private JButton styledButton(String label, Color bg, Color fg, int fontSize) {
+        JButton btn = new JButton(label);
+        btn.setBackground(bg); btn.setForeground(fg);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, fontSize));
+        btn.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+        btn.setFocusPainted(false);
+        btn.setOpaque(true);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    /** Panel with anti-aliased rounded corners. */
+    private static class RoundedPanel extends JPanel {
+        private final int radius;
+        private final Color color;
+        RoundedPanel(int radius, Color color) {
+            this.radius = radius; this.color = color;
+            setOpaque(false);
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), radius, radius));
+            g2.dispose();
+            super.paintComponent(g);
         }
     }
 
