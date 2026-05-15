@@ -8,16 +8,11 @@ A **multi-client real-time chat application** built with Java TCP sockets and Sw
 
 ```
 ChatApp/
-├── src/
-│   └── chatapp/
-│       ├── common/
-│       │   └── Message.java       ← Serializable message model
-│       ├── server/
-│       │   ├── Server.java        ← Multi-threaded TCP server
-│       │   └── ServerGUI.java     ← Server admin dashboard (Swing)
-│       └── client/
-│           ├── Client.java        ← Socket client logic
-│           └── ClientGUI.java     ← Chat UI (Swing)
+└── Message.java       ← Serializable message model
+├── Server.java        ← Multi-threaded TCP server
+└── ServerGUI.java     ← Server admin dashboard (Swing)
+├── Client.java        ← Socket client logic
+└── ClientGUI.java     ← Chat UI (Swing)
 ├── build.sh                       ← One-command build script
 └── README.md
 ```
@@ -37,21 +32,15 @@ chmod +x build.sh
 ./build.sh
 ```
 
-**On Windows (manually):**
-```cmd
-mkdir out
-javac -d out -sourcepath src src\chatapp\common\Message.java src\chatapp\server\Server.java src\chatapp\server\ServerGUI.java src\chatapp\client\Client.java src\chatapp\client\ClientGUI.java
-```
-
 ### 2. Start the Server
 ```bash
-java -cp out chatapp.server.ServerGUI
+java -cp out ServerGUI
 ```
 The server GUI opens and begins listening on **port 5000**.
 
 ### 3. Start One or More Clients
 ```bash
-java -cp out chatapp.client.ClientGUI
+java -cp out ClientGUI
 ```
 - Enter your username, server host (`localhost`), and port (`5000`)
 - Open multiple terminals / windows to simulate multiple users
